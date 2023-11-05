@@ -2,6 +2,7 @@
 using System.Net.Sockets;
 using System.Reflection.Metadata;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Client
 {
@@ -37,6 +38,9 @@ namespace Client
                 {
                     //получение задания от сервера
                     builder = Receiving(socket);
+
+                    //сохраняем текст примера, чтобы в случае неверного решения его можно было использовать
+                    string task = builder.ToString();
                     Console.WriteLine($"Пример: {builder}");
 
                     //отправка решения серверу
@@ -48,31 +52,30 @@ namespace Client
 
                     //получение ответа (вердикта) от сервера
                     builder = Receiving(socket);
-                    Console.WriteLine($"Ответ сервера: {builder}");
 
-                    //если пример решен неверно, то
-                    //запрос повторного ввода или вывода ответа
-                    if (builder.ToString().ToLower() == "неверно")
+                    //прерывание цикла при вводе стоп-слова
+                    //таким образом цикл никогда не сможет полностью выполниться при
+                    //вводе end
+                    if (message == "end")
+                        break;
+
+                    if (builder.ToString().ToLower() == "yes")
                     {
-                        Console.Write("Для повторного ввода нажмите enter, для ответа - ans: ");
-                        string? input = Console.ReadLine();
-                        if (input == "ans")
-                        {
-                            //отправка запроса на получение правильного ответа
-                            Sending(socket, input);
-                            //получение правильного ответа
-                            Console.WriteLine("Правильный ответ: {0}",
-                                arg0: Receiving(socket).ToString());
-                        }
-                        else
-                        {
-                            Sending(socket, "repeat");
-                        }
+                        Console.WriteLine("Решено верно.");
+                    }
+                    else if (builder.ToString().ToLower().StartsWith("no"))
+                    {
+                        Console.WriteLine("Решено неверно.");
+                        //сохраняем в переменную число, отправленное сервером
+                        int answer = int.Parse(builder.ToString().Split(' ')[1]);
+                        //предложение пользователю решить пример снова
+                        TryAnswerAgain(task, answer);
                     }
 
                     Console.WriteLine(new string('-', 20));
                 } while (message != "end");
 
+                Console.WriteLine("Завершение работы...");
                 socket.Shutdown(SocketShutdown.Both);
                 socket.Close();
             }
@@ -111,6 +114,43 @@ namespace Client
             byte[] data;
             data = Encoding.Unicode.GetBytes(message);
             socket.Send(data);
+        }
+
+        /// <summary>
+        /// метод с циклом, в котором пользователю предлагается решить пример заново
+        /// </summary>
+        /// <param name="task">Текст примера</param>
+        /// <param name="answer">Решение примера</param>
+        private static void TryAnswerAgain(string task, int answer)
+        {
+            bool stopFlag = true;
+            do
+            {
+                Console.WriteLine("Чтобы попытаться снова нажмите <Enter>, \n" +
+                    "Чтобы узнать ответ - любую другую клавишу.");
+                if (Console.ReadKey(true).Key == ConsoleKey.Enter)
+                {
+                    //повторный вывод примера
+                    Console.Write($"{task} = ");
+                    if (int.TryParse(Console.ReadLine(), out int userAns))
+                    {
+                        if (answer == userAns)
+                        {
+                            Console.WriteLine("Правильный ответ!");
+                            stopFlag = false;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Некорректный ввод!");
+                    }
+                }
+                else
+                {
+                    stopFlag = false;
+                    Console.WriteLine($"Ответ: {answer}");
+                }
+            } while (stopFlag);
         }
     }
 }
