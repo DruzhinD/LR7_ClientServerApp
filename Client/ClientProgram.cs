@@ -1,9 +1,13 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 
+//реализовать возможность чтения клиентом ответа с сервера, в случае неверного решения
+//т.е. в случае ответа от сервера NO + число, клиент должен предложить пользователю
+//попробовать снова или вывести правильный ответ
+//а после всех манипуляций вернуться к работе с сервером
+//схема находится в лабораторной работе
 namespace Client
 {
     internal class ClientProgram
